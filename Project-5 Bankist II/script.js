@@ -236,5 +236,8 @@ tabsContainer.addEventListener('click',function(event){
   // There's a catch if we want to do event delegation for the buttons then we have to get buttons on each click but problem is there a span element inside the button. So if we click on the span the button doesn't get selected.
   // A simple work around is go to parent of span (which is button) but if we always do that, what happens when we click on button (we'll get it's parent which is something we don't want).
   // So we will use closest method and pass query for button. So when span is clicked we get the button only and when button is clicked it is closest to itself.
-  const btn = event.target.closest('operations_tab');
+  const btn = event.target.closest('.operations__tab');
+  console.log(btn);
+  btn?.classList.add('operations__tab--active');
+
 })

@@ -159,7 +159,7 @@ btnScrollTo.addEventListener('click', function (event) {
 
 // We can pass a third argument in addEventListener (true/false).
 
-////////////////////////////////
+
 
 //(Page Navigation)
 
@@ -212,9 +212,9 @@ console.log(h1.parentElement);
 
 // We can look for specific Closest parents (use manual queries and closest method)
 
-h1.closest('.header').style.background='wheat';
+// h1.closest('.header').style.background='wheat';
 
-h1.closest('h1').style.background='red' ; // closest will be the same element itself
+// h1.closest('h1').style.background='red' ;  // closest will be the same element itself
 
 // Sideways (or siblings)
 // In JavaScript we can directly access only direct or immediate siblings but a simple work around is to go parent element of child and then access all the children nodes.
@@ -237,7 +237,250 @@ tabsContainer.addEventListener('click',function(event){
   // A simple work around is go to parent of span (which is button) but if we always do that, what happens when we click on button (we'll get it's parent which is something we don't want).
   // So we will use closest method and pass query for button. So when span is clicked we get the button only and when button is clicked it is closest to itself.
   const btn = event.target.closest('.operations__tab');
-  console.log(btn);
+  // Guard Clause
+  if(!btn) return;
+  // Clearing all active tabs (basically make all tabs inactive)
+  tabs.forEach(tab=>tab.classList.remove('operations__tab--active'));
+  tabsContent.forEach(content=>content.classList.remove('operations__content--active'));
+  // make only clicked tab active
   btn?.classList.add('operations__tab--active');
+  // Activate the content area (for click)
+  document
+  .querySelector(`.operations__content--${btn.dataset.tab}`)
+  .classList.add('operations__content--active');
+});
 
-})
+// Implementing menu fade animation
+
+const nav = document.querySelector('.nav');
+
+const hoverHandler= function(event, opacity){
+  if(event.target.classList.contains('nav__link')){
+    const link = event.target;
+    const siblings = link.closest('.nav').querySelectorAll('.nav__link');
+    const logo = link.closest('.nav').querySelector('img');
+    siblings.forEach(element=>{
+      if(element!==link){
+        element.style.opacity=opacity;
+      }
+    });
+    logo.style.opacity=opacity;
+  }  
+}
+
+nav.addEventListener('mouseover',function(event){
+  hoverHandler(event, 0.5);
+  // Another method to handle the call back is to use bind method and then pass opactiy (shown in next eventListener)
+;});
+
+// nav.addEventListener('mouseout',hoverHandler.bind(1));   we could use this but have to tweak the hoverHandler function a bit
+
+nav.addEventListener('mouseout',function(event){
+  hoverHandler(event,1);
+});
+
+// Implementation of sticky nav bar
+// Can be achieved by using an scroll event handler but that's not very efficient.⤵️
+// const initialCords=section1.getBoundingClientRect();
+// window.addEventListener('scroll',function(){
+//   if(this.window.scrollY > initialCords.top){
+//     nav.classList.add('sticky');
+//   }
+//   else{
+//     nav.classList.remove('sticky');
+//   }
+// });
+
+// A better way would be to use 'The Intersection Observer API'
+// About @ https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
+// 'Intersection Observer API' is quite complicated to wrap your head around but the crux is we can kinda track intersection of an element (in viewport) by some sort of thresold which is when crossed it will trigger a call-back function.
+
+// const obsCallback=function(entries,observer){
+//   entries.forEach(entry=>{
+//     console.log(entry);
+//   });
+// }
+
+// const obsOptions ={
+//   root: null,
+//   thresold:[0,0.2] // 0.2 is 20%
+// }
+
+// const observer = new IntersectionObserver(obsCallback,obsOptions);
+// observer.observe(section1);
+
+const navHeight = nav.getBoundingClientRect().height;
+
+const stickyNav = function (entries){
+  const entry = entries[0];
+  if(!entry.isIntersecting) 
+    nav.classList.add('sticky');
+  else  
+    nav.classList.remove('sticky');
+}
+
+const headerObserver = new IntersectionObserver(stickyNav , {
+  root: null,
+  threshold:0,
+  rootMargin:`-${navHeight}px`
+});
+
+headerObserver.observe(header);
+
+// Reveal section as we approach them during scroll
+// Basically in we have a class in our css which reduces the opacity to 0 and transform our sections a little bit. Our task is to remove that class as we reach by scrolling.
+
+
+const revealSection = function(entries,observer){
+  const entry = entries[0];
+  console.log(entry);
+  if(!entry.isIntersecting) return;
+  entry.target.classList.remove('section--hidden');
+  observer.unobserve(entry.target);
+
+}
+
+const sectionObserver = new IntersectionObserver(revealSection,{
+  root:null,
+  threshold : 0.15
+});
+
+allSections.forEach(function(section){
+  sectionObserver.observe(section);
+  section.classList.add('section--hidden');
+});
+
+// Lazy Loading Images (Important)
+
+// More @ : https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading
+
+const imgTargets = document.querySelectorAll('img[data-src]'); // select all images which has data-src as attribute
+
+const loadImg = function(entries, observer){
+  const [entry] = entries ;
+  if(!entry.isIntersecting) return;
+  //Replace src with data-src
+  entry.target.src = entry.target.dataset.src;
+  // After the change of img src it omit loading (basically it will try to apply changes right away which can give bad loading effect especially in slow internet)
+  // (Try yourself by using the conventional way)
+  // entry.target.classList.remove('lazy-img')
+  // So we use a eventlistener for load More @ https://developer.mozilla.org/en-US/docs/Web/API/Window/load_event
+  entry.target.addEventListener('load',function(){
+    entry.target.classList.remove('lazy-img');
+  });
+  observer.unobserve(entry.target);
+
+}
+
+const imgObserver=new IntersectionObserver(loadImg,{
+  root:null,
+  threshold:0,
+  rootMargin:'300px' // Load 300px early so that user don't notice
+});
+
+imgTargets.forEach(img => imgObserver.observe(img));
+
+// Implementing slider
+const slider = function () {
+  const slides = document.querySelectorAll('.slide');
+  const btnLeft = document.querySelector('.slider__btn--left');
+  const btnRight = document.querySelector('.slider__btn--right');
+  const dotContainer = document.querySelector('.dots');
+
+  let curSlide = 0;
+  const maxSlide = slides.length;
+
+  // Functions
+  const createDots = function () {
+    slides.forEach(function (_, i) {
+      dotContainer.insertAdjacentHTML(
+        'beforeend',
+        `<button class="dots__dot" data-slide="${i}"></button>`
+      );
+    });
+  };
+
+  const activateDot = function (slide) {
+    document
+      .querySelectorAll('.dots__dot')
+      .forEach(dot => dot.classList.remove('dots__dot--active'));
+
+    document
+      .querySelector(`.dots__dot[data-slide="${slide}"]`)
+      .classList.add('dots__dot--active');
+  };
+
+  const goToSlide = function (slide) {
+    slides.forEach(
+      (s, i) => (s.style.transform = `translateX(${100 * (i - slide)}%)`)
+    );
+  };
+
+  // Next slide
+  const nextSlide = function () {
+    if (curSlide === maxSlide - 1) {
+      curSlide = 0;
+    } else {
+      curSlide++;
+    }
+
+    goToSlide(curSlide);
+    activateDot(curSlide);
+  };
+
+  const prevSlide = function () {
+    if (curSlide === 0) {
+      curSlide = maxSlide - 1;
+    } else {
+      curSlide--;
+    }
+    goToSlide(curSlide);
+    activateDot(curSlide);
+  };
+
+  const init = function () {
+    goToSlide(0);
+    createDots();
+
+    activateDot(0);
+  };
+  init();
+
+  // Event handlers
+  btnRight.addEventListener('click', nextSlide);
+  btnLeft.addEventListener('click', prevSlide);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft') prevSlide();
+    e.key === 'ArrowRight' && nextSlide();
+  });
+
+  dotContainer.addEventListener('click', function (e) {
+    if (e.target.classList.contains('dots__dot')) {
+      const { slide } = e.target.dataset;
+      goToSlide(slide);
+      activateDot(slide);
+    }
+  });
+};
+slider();
+
+// I missed some parts, will revert back later. ⤴️
+
+
+// Lifecycle DOM Events
+document.addEventListener('DOMContentLoaded', function (e) {
+  // console.log('HTML parsed and DOM tree built!', e);
+});
+
+window.addEventListener('load', function (e) {
+  // console.log('Page fully loaded', e);
+});
+// When user is closing/reloading page a message will prompted (can't be set by developer it's generic message) - Don't abuse it use wisely.
+// window.addEventListener('beforeunload', function (e) {
+//   e.preventDefault();
+//   console.log(e);
+//   e.returnValue = '';
+// });
+
+// Defer and Async script loading (@ https://javascript.info/script-async-defer)
